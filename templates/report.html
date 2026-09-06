@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ dir }}">
+<head>
+<meta charset="utf-8">
+<style>
+    @font-face {
+        font-family: 'Cairo';
+        src: url('data:font/woff2;base64,{{ font_regular_b64 }}') format('woff2');
+        font-weight: 400; font-style: normal;
+    }
+    @font-face {
+        font-family: 'Cairo';
+        src: url('data:font/woff2;base64,{{ font_semibold_b64 }}') format('woff2');
+        font-weight: 600; font-style: normal;
+    }
+    @font-face {
+        font-family: 'Cairo';
+        src: url('data:font/woff2;base64,{{ font_bold_b64 }}') format('woff2');
+        font-weight: 700; font-style: normal;
+    }
+
+    @page {
+        size: A4 landscape;
+        margin: 14mm 14mm 18mm 14mm;
+        @bottom-center {
+            content: "{{ t.footer_title }}";
+            font-family: 'Cairo';
+            font-size: 8pt;
+            color: #8A96A3;
+        }
+        @bottom-{{ page_num_side }} {
+            content: "{{ t.page }} " counter(page) " / " counter(pages);
+            font-family: 'Cairo';
+            font-size: 8pt;
+            color: #8A96A3;
+        }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Cairo', sans-serif;
+        direction: {{ dir }};
+        color: #1F2A33;
+        font-size: 10.5pt;
+        margin: 0;
+    }
+    .section { margin-bottom: 16px; }
+    .cover, .meta-row, .kpi-grid { page-break-inside: avoid; }
+    .kpi-card { page-break-inside: avoid; }
+
+    /* ---------- header ---------- */
+    .cover {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #E5E9ED;
+        padding-bottom: 12px;
+        margin-bottom: 14px;
+    }
+    .cover .brand { display: flex; align-items: center; gap: 12px; }
+    .cover .brand img { height: 46px; }
+    .cover .brand .names { font-size: 9.5pt; color: #4F9A4A; font-weight: 700; line-height: 1.3; }
+    .cover .titles { text-align: {{ end_align }}; }
+    .cover .titles h1 { margin: 0; font-size: 18pt; color: #0B93B8; font-weight: 700; }
+    .cover .titles .sub { font-size: 10pt; color: #5B6B78; margin-top: 2px; }
+
+    .meta-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .meta-card {
+        flex: 1;
+        background: #F5F8FA;
+        border-radius: 6px;
+        padding: 8px 12px;
+        text-align: {{ end_align }};
+    }
+    .meta-card .label { font-size: 8pt; color: #5B6B78; }
+    .meta-card .value { font-size: 12pt; font-weight: 700; color: #1F2A33; }
+
+    /* ---------- section headings ---------- */
+    h2.section-title {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13pt; color: #0B93B8; font-weight: 700;
+        margin: 0 0 10px 0;
+    }
+    h2.section-title .bar { width: 4px; height: 16px; background: #0B93B8; border-radius: 2px; }
+
+    /* ---------- KPI cards ---------- */
+    .kpi-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .kpi-card {
+        flex: 1 1 21%;
+        min-width: 130px;
+        border: 1px solid #E5E9ED;
+        border-{{ start_side }}: 4px solid var(--accent, #0B93B8);
+        border-radius: 6px;
+        padding: 8px 10px;
+    }
+    .kpi-card .label { font-size: 8.5pt; color: #5B6B78; }
+    .kpi-card .value { font-size: 15pt; font-weight: 700; margin-top: 2px; }
+    .kpi-card .sub { font-size: 8pt; margin-top: 2px; }
+    .kpi-card .sub.up { color: #4F9A4A; }
+    .kpi-card .sub.down { color: #D64545; }
+    .kpi-card .sub.flat { color: #8A96A3; }
+
+    /* ---------- executive summary ---------- */
+    .summary-box {
+        background: #F5F8FA;
+        border-radius: 6px;
+        padding: 12px 14px;
+        line-height: 1.65;
+        font-size: 10.5pt;
+    }
+
+    /* ---------- table ---------- */
+    table.stations {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8.6pt;
+    }
+    table.stations th, table.stations td {
+        padding: 5px 6px;
+        text-align: center;
+        border-bottom: 1px solid #E5E9ED;
+    }
+    table.stations th {
+        background: #0B93B8;
+        color: white;
+        font-weight: 600;
+        font-size: 8.2pt;
+    }
+    table.stations td.name { text-align: {{ start_side }}; font-weight: 600; }
+    table.stations tr.total td { font-weight: 700; background: #F5F8FA; border-top: 2px solid #C9D2D8; }
+    table.stations td .cell-delta { display: block; font-size: 7.3pt; font-weight: 600; margin-top: 1px; }
+    .pass-good { color: #4F9A4A; font-weight: 700; }
+    .pass-bad { color: #D64545; font-weight: 700; }
+    .pass-mid { color: #C98A1E; font-weight: 700; }
+    .delta-up { color: #4F9A4A; }
+    .delta-down { color: #D64545; }
+    .delta-flat { color: #8A96A3; }
+
+    /* ---------- charts (pure HTML/CSS, no images -- keeps Arabic shaping correct) ---------- */
+    .chart-title { font-size: 9.5pt; font-weight: 600; color: #5B6B78; margin-bottom: 6px; }
+    /* block container (see .flags note above) so long bar lists can break across pages */
+    .barlist { }
+    .barlist .row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .barlist .name { width: 27%; font-size: 8.6pt; text-align: {{ end_align }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .barlist .track { flex: 1; background: #EEF2F4; border-radius: 3px; height: 13px; position: relative; }
+    .barlist .fill { height: 100%; border-radius: 3px; }
+    .barlist .val { width: 60px; font-size: 8.6pt; font-weight: 600; }
+    .vollist .val { width: 100px; }
+    .vollist .val .detail { display: block; font-size: 7.3pt; font-weight: 400; color: #8A96A3; }
+    .barlist .threshold-line { position: absolute; top: -2px; bottom: -2px; width: 1px; background: #8A96A3; }
+
+    .vollist .track { flex: 1; position: relative; height: 15px; }
+    .vollist .fill-bg { position: absolute; top: 0; {{ start_side }}: 0; height: 100%; background: #E2E7EA; border-radius: 3px; }
+    .vollist .fill-fg { position: absolute; top: 0; {{ start_side }}: 0; height: 100%; background: #0B93B8; border-radius: 3px; }
+    .legend-row { display:flex; gap:16px; margin-bottom:8px; font-size:8.5pt; color:#5B6B78; }
+    .legend-row .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-{{ start_side }}:4px; }
+
+    /* ---------- donut charts (appointments vs. attendance, per station) ----------
+       CSS Grid with an explicit column count (not flex-wrap) -- WeasyPrint's
+       flex-wrap under dir:rtl was overflowing the last column past the page
+       margin instead of wrapping it, so a fixed 3-column grid is used instead,
+       which lays out identically regardless of text direction. */
+    .donut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 6px; }
+    .donut-card { text-align: center; padding: 6px 4px 10px 4px; page-break-inside: avoid; }
+    /* display:inline-block (centered via the card's text-align) instead of a
+       block box with margin:auto -- WeasyPrint mis-positions an auto-centered
+       block child of a grid item under dir:rtl, shifting it one column over. */
+    .donut-wrap { position: relative; display: inline-block; width: 92px; height: 92px; margin-bottom: 6px; }
+    .donut-wrap svg { width: 100%; height: 100%; display: block; }
+    .donut-center { position: absolute; top: 50%; left: 0; width: 100%; transform: translateY(-50%); text-align: center; font-size: 12.5pt; font-weight: 700; color: #1F2A33; }
+    .donut-name { font-size: 8.8pt; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .donut-detail { font-size: 7.6pt; color: #8A96A3; margin-top: 1px; }
+
+    table.trend { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 4px; }
+    table.trend th, table.trend td { padding: 6px 8px; text-align: center; border-bottom: 1px solid #E5E9ED; }
+    table.trend th { background: #F5F8FA; color: #5B6B78; font-weight: 600; font-size: 8.3pt; }
+    table.trend td.name { text-align: {{ start_side }}; font-weight: 600; }
+    table.trend tr.current td { background: #EAF6FA; font-weight: 700; }
+
+    /* ---------- flags ----------
+       Note: .flags is a plain block container (not flex/grid) on purpose --
+       WeasyPrint can only fragment ordinary block boxes cleanly across page
+       breaks; a flex column here caused the whole list to jump to the next
+       page instead of filling the remaining space. */
+    .flags { }
+    .flag {
+        border-{{ start_side }}: 4px solid #8A96A3;
+        background: #FAFBFC;
+        border-radius: 4px;
+        padding: 6px 10px;
+        margin-bottom: 6px;
+        font-size: 9.5pt;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .flag .station { font-weight: 700; white-space: nowrap; }
+    .flag.risk { border-{{ start_side }}-color: #D64545; }
+    .flag.opportunity { border-{{ start_side }}-color: #C98A1E; }
+    .flag.positive { border-{{ start_side }}-color: #4F9A4A; }
+    .flag .tag {
+        font-size: 7.5pt; text-transform: uppercase; padding: 1px 6px; border-radius: 10px;
+        color: white; align-self: flex-start;
+    }
+    .flag.risk .tag { background: #D64545; }
+    .flag.opportunity .tag { background: #C98A1E; }
+    .flag.positive .tag { background: #4F9A4A; }
+</style>
+</head>
+<body>
+
+{% macro metric_cell(cell) -%}
+{% if cell.value_class %}<span class="{{ cell.value_class }}">{{ cell.value }}</span>{% else %}{{ cell.value }}{% endif %}{% if cell.delta_text %}<span class="cell-delta {{ cell.delta_class }}">{{ cell.delta_text }}</span>{% endif %}
+{%- endmacro %}
+
+<div class="section cover">
+    <div class="brand">
+        <img src="data:image/png;base64,{{ logo_b64 }}">
+        <div class="names">{{ t.company_name }}</div>
+    </div>
+    <div class="titles">
+        <h1>{{ t.report_title }}</h1>
+        <div class="sub">{{ t.report_subtitle }}</div>
+    </div>
+</div>
+
+<div class="section meta-row">
+    <div class="meta-card"><div class="label">{{ t.period }}</div><div class="value">{{ period_label }}</div></div>
+    <div class="meta-card"><div class="label">{{ t.stations_count }}</div><div class="value">{{ station_count }}</div></div>
+    <div class="meta-card"><div class="label">{{ t.generated_on }}</div><div class="value">{{ generated_on }}</div></div>
+</div>
+
+<div class="section">
+    <h2 class="section-title"><span class="bar"></span>{{ t.executive_summary }}</h2>
+    <div class="summary-box">{{ summary_text }}</div>
+</div>
+
+<div class="section">
+    <h2 class="section-title"><span class="bar"></span>{{ t.kpi_title }}</h2>
+    <div class="kpi-grid">
+        {% for card in kpi_cards %}
+        <div class="kpi-card" style="--accent: {{ card.accent }}">
+            <div class="label">{{ card.label }}</div>
+            <div class="value">{{ card.value }}</div>
+            {% if card.sub %}<div class="sub {{ card.sub_class }}">{{ card.sub }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if trend_rows %}
+<div class="section">
+    <h2 class="section-title"><span class="bar"></span>{{ t.trend_title }}</h2>
+    <table class="trend">
+        <thead>
+        <tr>
+            <th>{{ t.period }}</th>
+            <th>{{ t.kpi_appointments }}</th>
+            <th>{{ t.kpi_attendance }} %</th>
+            <th>{{ t.kpi_pass_pct }}</th>
+            <th>{{ t.kpi_absence }} %</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in trend_rows %}
+        <tr class="{{ 'current' if row.is_current else '' }}">
+            <td class="name">{{ row.label }}</td>
+            <td>{{ row.appointments }}</td>
+            <td>{{ row.attendance_pct }}</td>
+            <td>{{ row.pass_pct }}</td>
+            <td>{{ row.absence_pct }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="section" style="page-break-before: always;">
+    <h2 class="section-title"><span class="bar"></span>{{ t.station_table_title }}</h2>
+    {% if station_rows and station_rows[0].appointments.delta_text %}
+    <p style="font-size:8pt; color:#8A96A3; margin: -4px 0 8px 0;">{{ t.table_change_note }}</p>
+    {% endif %}
+    <table class="stations">
+        <thead>
+        <tr>
+            <th>{{ t.col_station }}</th>
+            <th>{{ t.col_appointments }}</th>
+            <th>{{ t.col_attendance }}</th>
+            <th>{{ t.col_absence }}</th>
+            <th>{{ t.col_first_time }}</th>
+            <th>{{ t.col_retest1 }}</th>
+            <th>{{ t.col_retest2 }}</th>
+            <th>{{ t.col_passed }}</th>
+            <th>{{ t.col_failed }}</th>
+            <th>{{ t.col_pass_pct }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in station_rows %}
+        <tr>
+            <td class="name">{{ row.name }}</td>
+            <td>{{ metric_cell(row.appointments) }}</td>
+            <td>{{ metric_cell(row.attendance) }}</td>
+            <td>{{ metric_cell(row.absence) }}</td>
+            <td>{{ metric_cell(row.first_time) }}</td>
+            <td>{{ metric_cell(row.retest1) }}</td>
+            <td>{{ metric_cell(row.retest2) }}</td>
+            <td>{{ metric_cell(row.passed) }}</td>
+            <td>{{ metric_cell(row.failed) }}</td>
+            <td>{{ metric_cell(row.pass) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total">
+            <td class="name">{{ t.total }}</td>
+            <td>{{ totals.appointments }}</td>
+            <td>{{ totals.attendance }}</td>
+            <td>{{ totals.absence }}</td>
+            <td>{{ totals.first_time }}</td>
+            <td>{{ totals.retest1 }}</td>
+            <td>{{ totals.retest2 }}</td>
+            <td>{{ totals.passed }}</td>
+            <td>{{ totals.failed }}</td>
+            <td>{{ totals.pass_pct }}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="section" style="page-break-before: always;">
+    <h2 class="section-title"><span class="bar"></span>{{ t.charts_title }}</h2>
+
+    <div class="chart-title">{{ t.chart_pass_rate }}</div>
+    <div class="barlist" style="margin-bottom:16px;">
+        {% for b in pass_rate_bars %}
+        <div class="row">
+            <div class="name">{{ b.name }}</div>
+            <div class="track">
+                <div class="fill" style="{{ start_side }}:0; width:{{ b.pct }}%; background:{{ b.color }};"></div>
+                <div class="threshold-line" style="{{ start_side }}:{{ b.threshold_pct }}%;"></div>
+            </div>
+            <div class="val">{{ b.value_label }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="chart-title">{{ t.chart_volume }}</div>
+    <div class="legend-row">
+        <span><span class="dot" style="background:#E2E7EA;"></span>{{ t.kpi_appointments }}</span>
+        <span><span class="dot" style="background:#0B93B8;"></span>{{ t.kpi_attendance }}</span>
+    </div>
+    <div class="donut-grid">
+        {% for b in volume_bars %}
+        <div class="donut-card">
+            <div class="donut-wrap">
+                <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E7EA" stroke-width="14"/>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#0B93B8" stroke-width="14"
+                            stroke-linecap="round"
+                            stroke-dasharray="{{ b.dash_fg }} {{ b.dash_gap }}"
+                            transform="rotate(-90 50 50)"/>
+                </svg>
+                <div class="donut-center">{{ b.value_label }}</div>
+            </div>
+            <div class="donut-name">{{ b.name }}</div>
+            <div class="donut-detail">{{ b.detail_label }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section" style="page-break-before: always;">
+    <h2 class="section-title"><span class="bar"></span>{{ t.flags_title }}</h2>
+    <div class="flags">
+        {% for f in flags %}
+        <div class="flag {{ f.kind }}">
+            <div><span class="station">{{ f.station_name }}</span> — {{ f.message }}</div>
+            <div class="tag">{{ f.tag_label }}</div>
+        </div>
+        {% endfor %}
+        {% if not flags %}
+        <div class="flag positive"><div>{{ t.no_flags }}</div></div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>
